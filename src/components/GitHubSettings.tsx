@@ -35,10 +35,15 @@ const GitHubSettings: React.FC = () => {
     const savedConfig = localStorage.getItem('githubConfig');
     if (savedConfig) {
       try {
-        const parsedConfig = JSON.parse(savedConfig) as GitHubConfig;
-        parsedConfig.configSource = 'localStorage';
-        setConfig(parsedConfig);
-        githubService.setConfig(parsedConfig);
+        const parsedConfig = JSON.parse(savedConfig) as Omit<GitHubConfig, 'configSource'>;
+        setConfig({
+          ...parsedConfig,
+          configSource: 'localStorage'
+        });
+        githubService.setConfig({
+          ...parsedConfig,
+          configSource: 'localStorage'
+        });
       } catch (error) {
         console.error("Error parsing stored GitHub config:", error);
       }
@@ -69,7 +74,10 @@ const GitHubSettings: React.FC = () => {
       }
 
       // Save to localStorage
-      const configToSave = { ...config, configSource: 'localStorage' };
+      const configToSave: GitHubConfig = { 
+        ...config, 
+        configSource: 'localStorage' 
+      };
       localStorage.setItem('githubConfig', JSON.stringify(configToSave));
       
       // Update the service with new config
