@@ -3,6 +3,6 @@
   "owner": "zivanest",
   "repo": "bookworm-excel-hub",
   "path": "src/data/libraryData.json",
-  "token": "YOUR_GITHUB_PERSONAL_ACCESS_TOKEN",
+  "token": "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",
   "branch": "main"
 }
