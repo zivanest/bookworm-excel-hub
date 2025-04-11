@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search, BookOpen } from 'lucide-react';
+import { PlusCircle, Search, BookOpen, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -17,20 +17,39 @@ const StudentSection: React.FC = () => {
   const [isBorrowedBooksDialogOpen, setIsBorrowedBooksDialogOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [borrowedBooks, setBorrowedBooks] = useState<Book[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
     loadStudents();
   }, []);
   
-  const loadStudents = () => {
-    setStudents(getAllStudents());
+  const loadStudents = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getAllStudents();
+      setStudents(data);
+    } catch (error) {
+      console.error("Error loading students:", error);
+      toast.error("Failed to load students");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleSearch = () => {
-    if (searchQuery.trim() === '') {
-      loadStudents();
-    } else {
-      setStudents(searchStudents(searchQuery));
+  const handleSearch = async () => {
+    setIsLoading(true);
+    try {
+      if (searchQuery.trim() === '') {
+        await loadStudents();
+      } else {
+        const results = await searchStudents(searchQuery);
+        setStudents(results);
+      }
+    } catch (error) {
+      console.error("Error searching students:", error);
+      toast.error("Search failed");
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -39,17 +58,17 @@ const StudentSection: React.FC = () => {
     setNewStudent(prev => ({ ...prev, [name]: value }));
   };
   
-  const handleAddStudent = () => {
+  const handleAddStudent = async () => {
     try {
       if (!newStudent.name || !newStudent.grade || !newStudent.code) {
         toast.error("All fields are required");
         return;
       }
       
-      addStudent(newStudent);
+      await addStudent(newStudent);
       setNewStudent({ name: '', grade: '', code: '' });
       setIsAddDialogOpen(false);
-      loadStudents();
+      await loadStudents();
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -59,11 +78,16 @@ const StudentSection: React.FC = () => {
     }
   };
   
-  const handleViewBorrowedBooks = (student: Student) => {
+  const handleViewBorrowedBooks = async (student: Student) => {
     setSelectedStudent(student);
-    const books = getStudentBorrowedBooks(student.code);
-    setBorrowedBooks(books);
-    setIsBorrowedBooksDialogOpen(true);
+    try {
+      const books = await getStudentBorrowedBooks(student.code);
+      setBorrowedBooks(books);
+      setIsBorrowedBooksDialogOpen(true);
+    } catch (error) {
+      console.error("Error fetching borrowed books:", error);
+      toast.error("Failed to load borrowed books");
+    }
   };
   
   // Handle Enter key press in search
@@ -90,10 +114,16 @@ const StudentSection: React.FC = () => {
             <Button
               onClick={handleSearch}
               className="rounded-l-none"
+              disabled={isLoading}
             >
               <Search className="h-4 w-4" />
             </Button>
           </div>
+          
+          <Button variant="outline" onClick={loadStudents} disabled={isLoading} className="ml-2">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -161,45 +191,52 @@ const StudentSection: React.FC = () => {
       </div>
       
       <Card className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="library-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Grade</th>
-                <th>Student Code</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {students.length > 0 ? (
-                students.map(student => (
-                  <tr key={student.id}>
-                    <td>{student.name}</td>
-                    <td>{student.grade}</td>
-                    <td>{student.code}</td>
-                    <td>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleViewBorrowedBooks(student)}
-                      >
-                        <BookOpen className="h-4 w-4 mr-2" />
-                        Borrowed Books
-                      </Button>
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-500">Loading students...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="library-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Grade</th>
+                  <th>Student Code</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {students.length > 0 ? (
+                  students.map(student => (
+                    <tr key={student.id}>
+                      <td>{student.name}</td>
+                      <td>{student.grade}</td>
+                      <td>{student.code}</td>
+                      <td>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleViewBorrowedBooks(student)}
+                        >
+                          <BookOpen className="h-4 w-4 mr-2" />
+                          Borrowed Books
+                        </Button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="text-center py-4 text-gray-500">
+                      No students found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={4} className="text-center py-4 text-gray-500">
-                    No students found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
       
       <Dialog open={isBorrowedBooksDialogOpen} onOpenChange={setIsBorrowedBooksDialogOpen}>

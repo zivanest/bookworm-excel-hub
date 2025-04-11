@@ -1,92 +1,135 @@
-
-import { Book, Student } from "../types";
+import { Book, Student, LibraryData } from "../types";
 import { toast } from "sonner";
+import { githubService } from "../services/githubService";
 
-// Mock library data with some initial values
-let students: Student[] = [
-  { id: "1", name: "John Smith", grade: "10", code: "S001" },
-  { id: "2", name: "Sarah Johnson", grade: "11", code: "S002" },
-  { id: "3", name: "Michael Brown", grade: "9", code: "S003" },
-  { id: "4", name: "Emily Wilson", grade: "12", code: "S004" },
-  { id: "5", name: "David Lee", grade: "10", code: "S005" }
-];
-
-let books: Book[] = [
-  { id: "1", name: "To Kill a Mockingbird", author: "Harper Lee", code: "B001", isBorrowed: false, borrowedBy: null },
-  { id: "2", name: "1984", author: "George Orwell", code: "B002", isBorrowed: true, borrowedBy: "S001" },
-  { id: "3", name: "The Great Gatsby", author: "F. Scott Fitzgerald", code: "B003", isBorrowed: false, borrowedBy: null },
-  { id: "4", name: "Pride and Prejudice", author: "Jane Austen", code: "B004", isBorrowed: true, borrowedBy: "S003" },
-  { id: "5", name: "The Catcher in the Rye", author: "J.D. Salinger", code: "B005", isBorrowed: false, borrowedBy: null }
-];
-
-// Student functions
-export const getAllStudents = (): Student[] => {
-  return [...students];
+// Local cache for data
+let localCache: LibraryData = {
+  students: [
+    { id: "1", name: "John Smith", grade: "10", code: "S001" },
+    { id: "2", name: "Sarah Johnson", grade: "11", code: "S002" },
+    { id: "3", name: "Michael Brown", grade: "9", code: "S003" },
+    { id: "4", name: "Emily Wilson", grade: "12", code: "S004" },
+    { id: "5", name: "David Lee", grade: "10", code: "S005" }
+  ],
+  books: [
+    { id: "1", name: "To Kill a Mockingbird", author: "Harper Lee", code: "B001", isBorrowed: false, borrowedBy: null },
+    { id: "2", name: "1984", author: "George Orwell", code: "B002", isBorrowed: true, borrowedBy: "S001" },
+    { id: "3", name: "The Great Gatsby", author: "F. Scott Fitzgerald", code: "B003", isBorrowed: false, borrowedBy: null },
+    { id: "4", name: "Pride and Prejudice", author: "Jane Austen", code: "B004", isBorrowed: true, borrowedBy: "S003" },
+    { id: "5", name: "The Catcher in the Rye", author: "J.D. Salinger", code: "B005", isBorrowed: false, borrowedBy: null }
+  ],
+  lastUpdated: new Date().toISOString()
 };
 
-export const addStudent = (student: Omit<Student, "id">): Student => {
+// Load data from GitHub
+export const loadData = async (): Promise<void> => {
+  try {
+    const data = await githubService.getData();
+    if (data) {
+      localCache = data;
+      console.log("Data loaded from GitHub:", data);
+    }
+  } catch (error) {
+    console.error("Error loading data:", error);
+    // Keep using local cache if GitHub fetch fails
+  }
+};
+
+// Save data to GitHub
+export const saveData = async (): Promise<void> => {
+  try {
+    await githubService.saveData(localCache);
+  } catch (error) {
+    console.error("Error saving data:", error);
+    toast.error("Failed to save data to GitHub");
+  }
+};
+
+// Initialize data 
+export const initializeData = async (): Promise<void> => {
+  if (githubService.hasValidConfig()) {
+    await loadData();
+  } else {
+    console.log("GitHub not configured, using local data");
+  }
+};
+
+// Student functions
+export const getAllStudents = async (): Promise<Student[]> => {
+  await loadData();
+  return [...localCache.students];
+};
+
+export const addStudent = async (student: Omit<Student, "id">): Promise<Student> => {
   // Check if student code already exists
-  if (students.some(s => s.code.toLowerCase() === student.code.toLowerCase())) {
+  if (localCache.students.some(s => s.code.toLowerCase() === student.code.toLowerCase())) {
     throw new Error("Student code already exists");
   }
   
   const newStudent = {
     ...student,
-    id: (students.length + 1).toString()
+    id: (localCache.students.length + 1).toString()
   };
   
-  students = [...students, newStudent];
+  localCache.students = [...localCache.students, newStudent];
+  await saveData();
   toast.success("Student added successfully");
   return newStudent;
 };
 
-export const searchStudents = (query: string): Student[] => {
+export const searchStudents = async (query: string): Promise<Student[]> => {
+  await loadData();
   const lowercaseQuery = query.toLowerCase();
-  return students.filter(
+  return localCache.students.filter(
     student => 
       student.name.toLowerCase().includes(lowercaseQuery) || 
       student.code.toLowerCase().includes(lowercaseQuery)
   );
 };
 
-export const getStudentByCode = (code: string): Student | undefined => {
-  return students.find(
+export const getStudentByCode = async (code: string): Promise<Student | undefined> => {
+  await loadData();
+  return localCache.students.find(
     student => student.code.toLowerCase() === code.toLowerCase()
   );
 };
 
-export const getStudentBorrowedBooks = (studentCode: string): Book[] => {
-  return books.filter(
+export const getStudentBorrowedBooks = async (studentCode: string): Promise<Book[]> => {
+  await loadData();
+  return localCache.books.filter(
     book => book.borrowedBy?.toLowerCase() === studentCode.toLowerCase()
   );
 };
 
 // Book functions
-export const getAllBooks = (): Book[] => {
-  return [...books];
+export const getAllBooks = async (): Promise<Book[]> => {
+  await loadData();
+  return [...localCache.books];
 };
 
-export const addBook = (book: Omit<Book, "id" | "isBorrowed" | "borrowedBy">): Book => {
+export const addBook = async (book: Omit<Book, "id" | "isBorrowed" | "borrowedBy">): Promise<Book> => {
   // Check if book code already exists
-  if (books.some(b => b.code.toLowerCase() === book.code.toLowerCase())) {
+  if (localCache.books.some(b => b.code.toLowerCase() === book.code.toLowerCase())) {
     throw new Error("Book code already exists");
   }
   
   const newBook = {
     ...book,
-    id: (books.length + 1).toString(),
+    id: (localCache.books.length + 1).toString(),
     isBorrowed: false,
     borrowedBy: null
   };
   
-  books = [...books, newBook];
+  localCache.books = [...localCache.books, newBook];
+  await saveData();
   toast.success("Book added successfully");
   return newBook;
 };
 
-export const searchBooks = (query: string): Book[] => {
+export const searchBooks = async (query: string): Promise<Book[]> => {
+  await loadData();
   const lowercaseQuery = query.toLowerCase();
-  return books.filter(
+  return localCache.books.filter(
     book => 
       book.name.toLowerCase().includes(lowercaseQuery) || 
       book.code.toLowerCase().includes(lowercaseQuery) ||
@@ -94,15 +137,17 @@ export const searchBooks = (query: string): Book[] => {
   );
 };
 
-export const getBookByCode = (code: string): Book | undefined => {
-  return books.find(
+export const getBookByCode = async (code: string): Promise<Book | undefined> => {
+  await loadData();
+  return localCache.books.find(
     book => book.code.toLowerCase() === code.toLowerCase()
   );
 };
 
 // Borrow/Return functions
-export const borrowBook = (bookCode: string, studentCode: string): void => {
-  const bookIndex = books.findIndex(
+export const borrowBook = async (bookCode: string, studentCode: string): Promise<void> => {
+  await loadData();
+  const bookIndex = localCache.books.findIndex(
     book => book.code.toLowerCase() === bookCode.toLowerCase()
   );
   
@@ -110,29 +155,31 @@ export const borrowBook = (bookCode: string, studentCode: string): void => {
     throw new Error("Book not found");
   }
   
-  const book = books[bookIndex];
+  const book = localCache.books[bookIndex];
   
   if (book.isBorrowed) {
     throw new Error("Book is already borrowed");
   }
   
-  const student = getStudentByCode(studentCode);
+  const student = await getStudentByCode(studentCode);
   
   if (!student) {
     throw new Error("Student not found");
   }
   
-  books = [
-    ...books.slice(0, bookIndex),
+  localCache.books = [
+    ...localCache.books.slice(0, bookIndex),
     { ...book, isBorrowed: true, borrowedBy: student.code },
-    ...books.slice(bookIndex + 1)
+    ...localCache.books.slice(bookIndex + 1)
   ];
   
+  await saveData();
   toast.success(`Book "${book.name}" borrowed by ${student.name}`);
 };
 
-export const returnBook = (bookCode: string): void => {
-  const bookIndex = books.findIndex(
+export const returnBook = async (bookCode: string): Promise<void> => {
+  await loadData();
+  const bookIndex = localCache.books.findIndex(
     book => book.code.toLowerCase() === bookCode.toLowerCase()
   );
   
@@ -140,31 +187,31 @@ export const returnBook = (bookCode: string): void => {
     throw new Error("Book not found");
   }
   
-  const book = books[bookIndex];
+  const book = localCache.books[bookIndex];
   
   if (!book.isBorrowed) {
     throw new Error("Book is not currently borrowed");
   }
   
-  books = [
-    ...books.slice(0, bookIndex),
+  localCache.books = [
+    ...localCache.books.slice(0, bookIndex),
     { ...book, isBorrowed: false, borrowedBy: null },
-    ...books.slice(bookIndex + 1)
+    ...localCache.books.slice(bookIndex + 1)
   ];
   
+  await saveData();
   toast.success(`Book "${book.name}" has been returned`);
 };
 
 // Export data as string (mocking Excel download)
-export const exportToExcel = (): string => {
-  // This is a simplified mock of what would be Excel export functionality
-  // In a real app, this would use a library to create an actual Excel file
+export const exportToExcel = async (): Promise<string> => {
+  await loadData();
   
   const studentCSV = "Student Name,Grade,Student Code\n" + 
-    students.map(s => `${s.name},${s.grade},${s.code}`).join("\n");
+    localCache.students.map(s => `${s.name},${s.grade},${s.code}`).join("\n");
   
   const bookCSV = "Book Name,Author,Book Code,Is Borrowed,Borrowed By\n" + 
-    books.map(b => 
+    localCache.books.map(b => 
       `${b.name},${b.author},${b.code},${b.isBorrowed ? "Yes" : "No"},${b.borrowedBy || ""}`
     ).join("\n");
   
@@ -172,10 +219,7 @@ export const exportToExcel = (): string => {
 };
 
 // Import data from string (mocking Excel upload)
-export const importFromExcel = (data: string): void => {
-  // This is a simplified mock of what would be Excel import functionality
-  // In a real app, this would parse an actual Excel file
-  
+export const importFromExcel = async (data: string): Promise<void> => {
   const sections = data.split("\n\n");
   const studentsSection = sections[0];
   const booksSection = sections[1];
@@ -188,7 +232,7 @@ export const importFromExcel = (data: string): void => {
     });
     
     if (newStudents.length > 0) {
-      students = newStudents;
+      localCache.students = newStudents;
     }
   }
   
@@ -207,9 +251,10 @@ export const importFromExcel = (data: string): void => {
     });
     
     if (newBooks.length > 0) {
-      books = newBooks;
+      localCache.books = newBooks;
     }
   }
   
+  await saveData();
   toast.success("Data imported successfully");
 };

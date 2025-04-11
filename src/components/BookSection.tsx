@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { PlusCircle, Search } from 'lucide-react';
+import { PlusCircle, Search, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,20 +15,66 @@ const BookSection: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [newBook, setNewBook] = useState({ name: '', author: '', code: '' });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [borrowerNames, setBorrowerNames] = useState<Record<string, string>>({});
   
   useEffect(() => {
     loadBooks();
   }, []);
   
-  const loadBooks = () => {
-    setBooks(getAllBooks());
+  const loadBooks = async () => {
+    setIsLoading(true);
+    try {
+      const data = await getAllBooks();
+      setBooks(data);
+      
+      // Load borrower names for all borrowed books
+      const borrowerCodes = data
+        .filter(book => book.isBorrowed && book.borrowedBy)
+        .map(book => book.borrowedBy as string);
+      
+      const uniqueCodes = [...new Set(borrowerCodes)];
+      const names: Record<string, string> = {};
+      
+      await Promise.all(
+        uniqueCodes.map(async code => {
+          try {
+            const student = await getStudentByCode(code);
+            if (student) {
+              names[code] = student.name;
+            } else {
+              names[code] = code;
+            }
+          } catch (error) {
+            console.error(`Error fetching student ${code}:`, error);
+            names[code] = code;
+          }
+        })
+      );
+      
+      setBorrowerNames(names);
+    } catch (error) {
+      console.error("Error loading books:", error);
+      toast.error("Failed to load books");
+    } finally {
+      setIsLoading(false);
+    }
   };
   
-  const handleSearch = () => {
-    if (searchQuery.trim() === '') {
-      loadBooks();
-    } else {
-      setBooks(searchBooks(searchQuery));
+  const handleSearch = async () => {
+    setIsLoading(true);
+    try {
+      if (searchQuery.trim() === '') {
+        await loadBooks();
+      } else {
+        const results = await searchBooks(searchQuery);
+        setBooks(results);
+      }
+    } catch (error) {
+      console.error("Error searching books:", error);
+      toast.error("Search failed");
+    } finally {
+      setIsLoading(false);
     }
   };
   
@@ -37,17 +83,17 @@ const BookSection: React.FC = () => {
     setNewBook(prev => ({ ...prev, [name]: value }));
   };
   
-  const handleAddBook = () => {
+  const handleAddBook = async () => {
     try {
       if (!newBook.name || !newBook.author || !newBook.code) {
         toast.error("All fields are required");
         return;
       }
       
-      addBook(newBook);
+      await addBook(newBook);
       setNewBook({ name: '', author: '', code: '' });
       setIsAddDialogOpen(false);
-      loadBooks();
+      await loadBooks();
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
@@ -58,8 +104,7 @@ const BookSection: React.FC = () => {
   };
   
   const getBorrowerName = (studentCode: string) => {
-    const student = getStudentByCode(studentCode);
-    return student ? student.name : studentCode;
+    return borrowerNames[studentCode] || studentCode;
   };
   
   // Handle Enter key press in search
@@ -86,10 +131,16 @@ const BookSection: React.FC = () => {
             <Button
               onClick={handleSearch}
               className="rounded-l-none"
+              disabled={isLoading}
             >
               <Search className="h-4 w-4" />
             </Button>
           </div>
+          
+          <Button variant="outline" onClick={loadBooks} disabled={isLoading} className="ml-2">
+            <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
           
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -157,52 +208,59 @@ const BookSection: React.FC = () => {
       </div>
       
       <Card className="bg-white shadow rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="library-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Author</th>
-                <th>Code</th>
-                <th>Status</th>
-                <th>Borrowed By</th>
-              </tr>
-            </thead>
-            <tbody>
-              {books.length > 0 ? (
-                books.map(book => (
-                  <tr key={book.id}>
-                    <td>{book.name}</td>
-                    <td>{book.author}</td>
-                    <td>{book.code}</td>
-                    <td>
-                      {book.isBorrowed ? (
-                        <Badge variant="destructive">Borrowed</Badge>
-                      ) : (
-                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
-                          Available
-                        </Badge>
-                      )}
-                    </td>
-                    <td>
-                      {book.isBorrowed && book.borrowedBy ? (
-                        getBorrowerName(book.borrowedBy)
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <RefreshCw className="h-8 w-8 animate-spin mx-auto mb-4 text-gray-400" />
+            <p className="text-gray-500">Loading books...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="library-table">
+              <thead>
+                <tr>
+                  <th>Title</th>
+                  <th>Author</th>
+                  <th>Code</th>
+                  <th>Status</th>
+                  <th>Borrowed By</th>
+                </tr>
+              </thead>
+              <tbody>
+                {books.length > 0 ? (
+                  books.map(book => (
+                    <tr key={book.id}>
+                      <td>{book.name}</td>
+                      <td>{book.author}</td>
+                      <td>{book.code}</td>
+                      <td>
+                        {book.isBorrowed ? (
+                          <Badge variant="destructive">Borrowed</Badge>
+                        ) : (
+                          <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                            Available
+                          </Badge>
+                        )}
+                      </td>
+                      <td>
+                        {book.isBorrowed && book.borrowedBy ? (
+                          getBorrowerName(book.borrowedBy)
+                        ) : (
+                          <span className="text-gray-400">-</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className="text-center py-4 text-gray-500">
+                      No books found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={5} className="text-center py-4 text-gray-500">
-                    No books found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
     </div>
   );

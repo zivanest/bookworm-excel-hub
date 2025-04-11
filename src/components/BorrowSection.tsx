@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -15,60 +15,85 @@ const BorrowSection: React.FC = () => {
   const [student, setStudent] = useState<Student | null>(null);
   const [isBookFound, setIsBookFound] = useState<boolean | null>(null);
   const [isStudentFound, setIsStudentFound] = useState<boolean | null>(null);
+  const [isSearchingBook, setIsSearchingBook] = useState(false);
+  const [isSearchingStudent, setIsSearchingStudent] = useState(false);
+  const [isBorrowing, setIsBorrowing] = useState(false);
   
-  const handleSearchBook = () => {
+  const handleSearchBook = async () => {
     if (!bookCode.trim()) {
       toast.error("Please enter a book code");
       return;
     }
     
-    const foundBook = getBookByCode(bookCode);
+    setIsSearchingBook(true);
     
-    if (foundBook) {
-      setBook(foundBook);
-      setIsBookFound(true);
+    try {
+      const foundBook = await getBookByCode(bookCode);
       
-      if (foundBook.isBorrowed) {
-        toast.error("This book is already borrowed");
+      if (foundBook) {
+        setBook(foundBook);
+        setIsBookFound(true);
+        
+        if (foundBook.isBorrowed) {
+          toast.error("This book is already borrowed");
+        }
+      } else {
+        setBook(null);
+        setIsBookFound(false);
+        toast.error("Book not found");
       }
-    } else {
-      setBook(null);
+    } catch (error) {
+      console.error("Error searching for book:", error);
+      toast.error("Error searching for book");
       setIsBookFound(false);
-      toast.error("Book not found");
+    } finally {
+      setIsSearchingBook(false);
     }
   };
   
-  const handleSearchStudent = () => {
+  const handleSearchStudent = async () => {
     if (!studentCode.trim()) {
       toast.error("Please enter a student code");
       return;
     }
     
-    const foundStudent = getStudentByCode(studentCode);
+    setIsSearchingStudent(true);
     
-    if (foundStudent) {
-      setStudent(foundStudent);
-      setIsStudentFound(true);
-    } else {
-      setStudent(null);
+    try {
+      const foundStudent = await getStudentByCode(studentCode);
+      
+      if (foundStudent) {
+        setStudent(foundStudent);
+        setIsStudentFound(true);
+      } else {
+        setStudent(null);
+        setIsStudentFound(false);
+        toast.error("Student not found");
+      }
+    } catch (error) {
+      console.error("Error searching for student:", error);
+      toast.error("Error searching for student");
       setIsStudentFound(false);
-      toast.error("Student not found");
+    } finally {
+      setIsSearchingStudent(false);
     }
   };
   
-  const handleBorrow = () => {
+  const handleBorrow = async () => {
+    if (!book || !student) {
+      toast.error("Please select both a book and a student");
+      return;
+    }
+    
+    if (book.isBorrowed) {
+      toast.error("This book is already borrowed");
+      return;
+    }
+    
+    setIsBorrowing(true);
+    
     try {
-      if (!book || !student) {
-        toast.error("Please select both a book and a student");
-        return;
-      }
-      
-      if (book.isBorrowed) {
-        toast.error("This book is already borrowed");
-        return;
-      }
-      
-      borrowBook(book.code, student.code);
+      await borrowBook(book.code, student.code);
       
       // Reset form
       setBookCode('');
@@ -83,6 +108,8 @@ const BorrowSection: React.FC = () => {
       } else {
         toast.error("Error borrowing book");
       }
+    } finally {
+      setIsBorrowing(false);
     }
   };
   
@@ -100,12 +127,18 @@ const BorrowSection: React.FC = () => {
               value={bookCode}
               onChange={(e) => setBookCode(e.target.value)}
               className="rounded-r-none"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchBook()}
             />
             <Button
               onClick={handleSearchBook}
               className="rounded-l-none"
+              disabled={isSearchingBook}
             >
-              <Search className="h-4 w-4" />
+              {isSearchingBook ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
             </Button>
           </div>
           
@@ -141,12 +174,18 @@ const BorrowSection: React.FC = () => {
               value={studentCode}
               onChange={(e) => setStudentCode(e.target.value)}
               className="rounded-r-none"
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchStudent()}
             />
             <Button
               onClick={handleSearchStudent}
               className="rounded-l-none"
+              disabled={isSearchingStudent}
             >
-              <Search className="h-4 w-4" />
+              {isSearchingStudent ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
             </Button>
           </div>
           
@@ -170,9 +209,16 @@ const BorrowSection: React.FC = () => {
         <Button
           size="lg"
           onClick={handleBorrow}
-          disabled={!book || !student || book.isBorrowed}
+          disabled={!book || !student || book.isBorrowed || isBorrowing}
         >
-          Borrow Book
+          {isBorrowing ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Processing...
+            </>
+          ) : (
+            "Borrow Book"
+          )}
         </Button>
       </div>
     </div>

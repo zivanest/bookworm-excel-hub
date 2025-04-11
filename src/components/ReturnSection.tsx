@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -12,37 +12,53 @@ const ReturnSection: React.FC = () => {
   const [bookCode, setBookCode] = useState('');
   const [book, setBook] = useState<Book | null>(null);
   const [isBookFound, setIsBookFound] = useState<boolean | null>(null);
+  const [isSearchingBook, setIsSearchingBook] = useState(false);
+  const [isReturning, setIsReturning] = useState(false);
+  const [borrowerName, setBorrowerName] = useState<string | null>(null);
   
-  const handleSearchBook = () => {
+  const handleSearchBook = async () => {
     if (!bookCode.trim()) {
       toast.error("Please enter a book code");
       return;
     }
     
-    const foundBook = getBookByCode(bookCode);
+    setIsSearchingBook(true);
+    setBorrowerName(null);
     
-    if (foundBook) {
-      setBook(foundBook);
-      setIsBookFound(true);
+    try {
+      const foundBook = await getBookByCode(bookCode);
       
-      if (!foundBook.isBorrowed) {
-        toast.error("This book is not currently borrowed");
+      if (foundBook) {
+        setBook(foundBook);
+        setIsBookFound(true);
+        
+        if (!foundBook.isBorrowed) {
+          toast.error("This book is not currently borrowed");
+        } else if (foundBook.borrowedBy) {
+          // Get borrower name
+          try {
+            const student = await getStudentByCode(foundBook.borrowedBy);
+            setBorrowerName(student?.name || foundBook.borrowedBy);
+          } catch (error) {
+            console.error("Error fetching borrower name:", error);
+            setBorrowerName(foundBook.borrowedBy);
+          }
+        }
+      } else {
+        setBook(null);
+        setIsBookFound(false);
+        toast.error("Book not found");
       }
-    } else {
-      setBook(null);
+    } catch (error) {
+      console.error("Error searching for book:", error);
+      toast.error("Error searching for book");
       setIsBookFound(false);
-      toast.error("Book not found");
+    } finally {
+      setIsSearchingBook(false);
     }
   };
   
-  const getBorrowerName = () => {
-    if (!book || !book.borrowedBy) return null;
-    
-    const student = getStudentByCode(book.borrowedBy);
-    return student ? student.name : book.borrowedBy;
-  };
-  
-  const handleReturn = () => {
+  const handleReturn = async () => {
     try {
       if (!book) {
         toast.error("Please select a book");
@@ -54,18 +70,23 @@ const ReturnSection: React.FC = () => {
         return;
       }
       
-      returnBook(book.code);
+      setIsReturning(true);
+      
+      await returnBook(book.code);
       
       // Reset form
       setBookCode('');
       setBook(null);
       setIsBookFound(null);
+      setBorrowerName(null);
     } catch (error) {
       if (error instanceof Error) {
         toast.error(error.message);
       } else {
         toast.error("Error returning book");
       }
+    } finally {
+      setIsReturning(false);
     }
   };
   
@@ -82,12 +103,18 @@ const ReturnSection: React.FC = () => {
             value={bookCode}
             onChange={(e) => setBookCode(e.target.value)}
             className="rounded-r-none"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearchBook()}
           />
           <Button
             onClick={handleSearchBook}
             className="rounded-l-none"
+            disabled={isSearchingBook}
           >
-            <Search className="h-4 w-4" />
+            {isSearchingBook ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
           </Button>
         </div>
         
@@ -104,8 +131,8 @@ const ReturnSection: React.FC = () => {
                 <span className="text-green-600">Available</span>
               )}
             </p>
-            {book.isBorrowed && (
-              <p><strong>Borrowed By:</strong> {getBorrowerName()}</p>
+            {book.isBorrowed && borrowerName && (
+              <p><strong>Borrowed By:</strong> {borrowerName}</p>
             )}
           </div>
         )}
@@ -120,9 +147,16 @@ const ReturnSection: React.FC = () => {
           <Button
             size="lg"
             onClick={handleReturn}
-            disabled={!book || !book.isBorrowed}
+            disabled={!book || !book.isBorrowed || isReturning}
           >
-            Return Book
+            {isReturning ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Return Book"
+            )}
           </Button>
         </div>
       </Card>
