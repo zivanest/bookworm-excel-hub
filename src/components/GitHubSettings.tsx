@@ -15,7 +15,7 @@ const GitHubSettings: React.FC = () => {
   const [config, setConfig] = useState<GitHubConfig>({
     owner: 'zivanest',
     repo: 'bookworm-excel-hub',
-    path: 'library-data.json',
+    path: 'src/data/libraryData.ts',
     token: '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',
     branch: 'main'
   });
