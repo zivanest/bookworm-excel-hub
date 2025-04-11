@@ -14,10 +14,15 @@ const Navbar: React.FC<NavbarProps> = ({ activeTab, setActiveTab }) => {
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportData, setExportData] = useState("");
 
-  const handleExport = () => {
-    const data = exportToExcel();
-    setExportData(data);
-    setIsExportDialogOpen(true);
+  const handleExport = async () => {
+    try {
+      const data = await exportToExcel();
+      setExportData(data);
+      setIsExportDialogOpen(true);
+    } catch (error) {
+      console.error("Error exporting data:", error);
+      toast.error("Failed to export data");
+    }
   };
 
   const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
