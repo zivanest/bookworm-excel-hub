@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,16 +14,16 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 220 83% 40%; /* Library blue */
     --primary-foreground: 210 40% 98%;
 
-    --secondary: 210 40% 96.1%;
+    --secondary: 217 91% 60%; /* Secondary blue */
     --secondary-foreground: 222.2 47.4% 11.2%;
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    --accent: 217 91% 75%; /* Accent blue */
     --accent-foreground: 222.2 47.4% 11.2%;
 
     --destructive: 0 84.2% 60.2%;
@@ -35,19 +36,12 @@
     --radius: 0.5rem;
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
@@ -96,6 +90,36 @@
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-library-background text-foreground;
+  }
+}
+
+@layer components {
+  .library-card {
+    @apply bg-white rounded-lg shadow-md p-6 transition-all duration-200 hover:shadow-lg border border-gray-100;
+  }
+  
+  .library-heading {
+    @apply text-2xl font-bold text-library-primary mb-4;
+  }
+  
+  .library-subheading {
+    @apply text-xl font-semibold text-gray-700 mb-3;
+  }
+  
+  .library-table {
+    @apply w-full border-collapse;
+  }
+  
+  .library-table th {
+    @apply bg-library-primary text-white p-3 text-left;
+  }
+  
+  .library-table td {
+    @apply border-t border-gray-200 p-3;
+  }
+  
+  .library-table tr:hover {
+    @apply bg-library-muted;
   }
 }

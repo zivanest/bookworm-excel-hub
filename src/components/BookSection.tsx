@@ -1,0 +1,211 @@
+
+import React, { useState, useEffect } from 'react';
+import { PlusCircle, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
+import { addBook, getAllBooks, searchBooks, getStudentByCode } from '@/data/libraryData';
+import { Book } from '@/types';
+import { toast } from 'sonner';
+
+const BookSection: React.FC = () => {
+  const [books, setBooks] = useState<Book[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [newBook, setNewBook] = useState({ name: '', author: '', code: '' });
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  
+  useEffect(() => {
+    loadBooks();
+  }, []);
+  
+  const loadBooks = () => {
+    setBooks(getAllBooks());
+  };
+  
+  const handleSearch = () => {
+    if (searchQuery.trim() === '') {
+      loadBooks();
+    } else {
+      setBooks(searchBooks(searchQuery));
+    }
+  };
+  
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setNewBook(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleAddBook = () => {
+    try {
+      if (!newBook.name || !newBook.author || !newBook.code) {
+        toast.error("All fields are required");
+        return;
+      }
+      
+      addBook(newBook);
+      setNewBook({ name: '', author: '', code: '' });
+      setIsAddDialogOpen(false);
+      loadBooks();
+    } catch (error) {
+      if (error instanceof Error) {
+        toast.error(error.message);
+      } else {
+        toast.error("Error adding book");
+      }
+    }
+  };
+  
+  const getBorrowerName = (studentCode: string) => {
+    const student = getStudentByCode(studentCode);
+    return student ? student.name : studentCode;
+  };
+  
+  // Handle Enter key press in search
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  };
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        <h2 className="library-heading mb-4 md:mb-0">Book Management</h2>
+        
+        <div className="flex flex-col sm:flex-row w-full md:w-auto gap-4">
+          <div className="flex w-full md:w-auto">
+            <Input
+              placeholder="Search by name, author or code..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              className="rounded-r-none"
+            />
+            <Button
+              onClick={handleSearch}
+              className="rounded-l-none"
+            >
+              <Search className="h-4 w-4" />
+            </Button>
+          </div>
+          
+          <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Add Book
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Add New Book</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="name" className="text-right">
+                    Title:
+                  </label>
+                  <Input
+                    id="name"
+                    name="name"
+                    placeholder="Book title"
+                    value={newBook.name}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="author" className="text-right">
+                    Author:
+                  </label>
+                  <Input
+                    id="author"
+                    name="author"
+                    placeholder="Book author"
+                    value={newBook.author}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <label htmlFor="code" className="text-right">
+                    Code:
+                  </label>
+                  <Input
+                    id="code"
+                    name="code"
+                    placeholder="Book code"
+                    value={newBook.code}
+                    onChange={handleInputChange}
+                    className="col-span-3"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <Button variant="outline" className="mr-2" onClick={() => setIsAddDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleAddBook}>
+                  Add Book
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+      
+      <Card className="bg-white shadow rounded-lg overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="library-table">
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Author</th>
+                <th>Code</th>
+                <th>Status</th>
+                <th>Borrowed By</th>
+              </tr>
+            </thead>
+            <tbody>
+              {books.length > 0 ? (
+                books.map(book => (
+                  <tr key={book.id}>
+                    <td>{book.name}</td>
+                    <td>{book.author}</td>
+                    <td>{book.code}</td>
+                    <td>
+                      {book.isBorrowed ? (
+                        <Badge variant="destructive">Borrowed</Badge>
+                      ) : (
+                        <Badge variant="outline" className="bg-green-100 text-green-800 border-green-200">
+                          Available
+                        </Badge>
+                      )}
+                    </td>
+                    <td>
+                      {book.isBorrowed && book.borrowedBy ? (
+                        getBorrowerName(book.borrowedBy)
+                      ) : (
+                        <span className="text-gray-400">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={5} className="text-center py-4 text-gray-500">
+                    No books found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+};
+
+export default BookSection;
