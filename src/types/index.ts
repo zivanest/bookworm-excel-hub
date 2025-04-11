@@ -21,6 +21,7 @@ export interface GitHubConfig {
   path: string;
   token: string;
   branch?: string;
+  configSource?: 'file' | 'localStorage';
 }
 
 export interface LibraryData {

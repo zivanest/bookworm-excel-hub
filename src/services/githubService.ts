@@ -18,10 +18,36 @@ export class GitHubDataService {
   
   constructor(config: GitHubConfig) {
     this.config = config;
+    this.loadConfigFromFile();
+  }
+
+  // Load configuration from the config file
+  private async loadConfigFromFile(): Promise<void> {
+    try {
+      const response = await fetch('/github-config.json');
+      
+      if (response.ok) {
+        const fileConfig = await response.json();
+        if (fileConfig && fileConfig.owner && fileConfig.repo && fileConfig.token) {
+          console.log("GitHub config loaded from file");
+          this.config = { ...fileConfig, configSource: 'file' };
+          toast.success("GitHub configuration loaded from file");
+        }
+      }
+    } catch (error) {
+      console.log("No GitHub config file found or error loading it:", error);
+      // Silently fail and use localStorage config if available
+    }
   }
 
   // Set or update GitHub configuration
   public setConfig(config: GitHubConfig): void {
+    // Don't override file config with localStorage config
+    if (this.config.configSource === 'file' && (!config.configSource || config.configSource === 'localStorage')) {
+      console.log("Not overriding file config with localStorage config");
+      return;
+    }
+    
     this.config = config;
     this.cachedData = null; // Clear cache when config changes
   }
@@ -29,6 +55,11 @@ export class GitHubDataService {
   // Check if GitHub configuration is valid
   public hasValidConfig(): boolean {
     return !!(this.config.owner && this.config.repo && this.config.path && this.config.token);
+  }
+
+  // Get current config
+  public getConfig(): GitHubConfig {
+    return { ...this.config };
   }
 
   // Fetch data from GitHub with cache control (5 min TTL)
