@@ -1,4 +1,3 @@
-
 import { GitHubConfig, LibraryData } from "@/types";
 import { toast } from "sonner";
 
@@ -35,7 +34,7 @@ export class GitHubDataService {
         }
         
         const fileConfig = await response.json();
-        if (fileConfig && fileConfig.owner && fileConfig.repo && fileConfig.token) {
+        if (fileConfig && fileConfig.owner && fileConfig.repo) {
           console.log("GitHub config loaded from file");
           this.config = { 
             ...fileConfig, 
@@ -64,7 +63,7 @@ export class GitHubDataService {
 
   // Check if GitHub configuration is valid
   public hasValidConfig(): boolean {
-    return !!(this.config.owner && this.config.repo && this.config.path && this.config.token);
+    return !!(this.config.owner && this.config.repo && this.config.path);
   }
 
   // Get current config
@@ -109,15 +108,19 @@ export class GitHubDataService {
     try {
       const { owner, repo, path, token, branch = "main" } = this.config;
       
-      // Fetch file content from GitHub
+      // Fetch file content from GitHub - now works with public repos (no token required)
+      const headers: HeadersInit = {
+        Accept: "application/vnd.github.v3+json"
+      };
+      
+      // Only add Authorization header if token is provided
+      if (token) {
+        headers.Authorization = `token ${token}`;
+      }
+      
       const response = await fetch(
         `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
-        {
-          headers: {
-            Authorization: `token ${token}`,
-            Accept: "application/vnd.github.v3+json"
-          }
-        }
+        { headers }
       );
 
       if (!response.ok) {
@@ -166,8 +169,14 @@ export class GitHubDataService {
     }
   }
 
-  // Save data to GitHub
+  // Save data to GitHub - for public repos, this won't work without token, so we'll show a meaningful message
   public async saveData(data: LibraryData): Promise<boolean> {
+    if (!this.config.token) {
+      console.error("GitHub token is required to save data to the repository");
+      toast.error("Cannot save to GitHub: Public repos require a personal access token for writing data");
+      return false;
+    }
+
     if (!this.hasValidConfig()) {
       console.error("GitHub configuration is incomplete");
       toast.error("GitHub configuration is incomplete");
@@ -184,14 +193,17 @@ export class GitHubDataService {
       let sha: string | undefined;
       
       try {
+        const headers: HeadersInit = {
+          Accept: "application/vnd.github.v3+json"
+        };
+        
+        if (token) {
+          headers.Authorization = `token ${token}`;
+        }
+        
         const fileResponse = await fetch(
           `https://api.github.com/repos/${owner}/${repo}/contents/${path}?ref=${branch}`,
-          {
-            headers: {
-              Authorization: `token ${token}`,
-              Accept: "application/vnd.github.v3+json"
-            }
-          }
+          { headers }
         );
         
         if (fileResponse.ok) {
@@ -256,7 +268,6 @@ export const githubService = new GitHubDataService({
   owner: "",
   repo: "",
   path: "library-data.json", // Changed to .json extension
-  token: "",
   branch: "main",
   configSource: "localStorage" as "localStorage" | "file"
 });
