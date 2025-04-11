@@ -1,0 +1,78 @@
+
+{
+  "students": [
+    {
+      "id": "1", 
+      "name": "John Smith", 
+      "grade": "10", 
+      "code": "S001"
+    },
+    {
+      "id": "2", 
+      "name": "Sarah Johnson", 
+      "grade": "11", 
+      "code": "S002"
+    },
+    {
+      "id": "3", 
+      "name": "Michael Brown", 
+      "grade": "9", 
+      "code": "S003"
+    },
+    {
+      "id": "4", 
+      "name": "Emily Wilson", 
+      "grade": "12", 
+      "code": "S004"
+    },
+    {
+      "id": "5", 
+      "name": "David Lee", 
+      "grade": "10", 
+      "code": "S005"
+    }
+  ],
+  "books": [
+    {
+      "id": "1", 
+      "name": "To Kill a Mockingbird", 
+      "author": "Harper Lee", 
+      "code": "B001", 
+      "isBorrowed": false, 
+      "borrowedBy": null
+    },
+    {
+      "id": "2", 
+      "name": "1984", 
+      "author": "George Orwell", 
+      "code": "B002", 
+      "isBorrowed": true, 
+      "borrowedBy": "S001"
+    },
+    {
+      "id": "3", 
+      "name": "The Great Gatsby", 
+      "author": "F. Scott Fitzgerald", 
+      "code": "B003", 
+      "isBorrowed": false, 
+      "borrowedBy": null
+    },
+    {
+      "id": "4", 
+      "name": "Pride and Prejudice", 
+      "author": "Jane Austen", 
+      "code": "B004", 
+      "isBorrowed": true, 
+      "borrowedBy": "S003"
+    },
+    {
+      "id": "5", 
+      "name": "The Catcher in the Rye", 
+      "author": "J.D. Salinger", 
+      "code": "B005", 
+      "isBorrowed": false, 
+      "borrowedBy": null
+    }
+  ],
+  "lastUpdated": "2025-04-11T00:00:00.000Z"
+}
