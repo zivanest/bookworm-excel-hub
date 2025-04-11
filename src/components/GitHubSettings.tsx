@@ -16,7 +16,6 @@ const GitHubSettings: React.FC = () => {
     owner: '',
     repo: '',
     path: 'library-data.json',
-    token: '',
     branch: 'main',
     configSource: 'localStorage'
   });
@@ -69,7 +68,7 @@ const GitHubSettings: React.FC = () => {
       }
       
       // Validate config
-      if (!config.owner || !config.repo || !config.path || !config.token) {
+      if (!config.owner || !config.repo || !config.path) {
         toast.error("All fields are required");
         return;
       }
@@ -182,22 +181,6 @@ const GitHubSettings: React.FC = () => {
                 value={config.branch || 'main'}
                 onChange={handleChange}
                 placeholder="e.g., main"
-                className="col-span-3"
-                disabled={isFileConfig}
-              />
-            </div>
-            
-            <div className="grid grid-cols-4 items-center gap-4">
-              <label htmlFor="token" className="text-right text-sm">
-                Token:
-              </label>
-              <Input
-                id="token"
-                name="token"
-                type="password"
-                value={config.token}
-                onChange={handleChange}
-                placeholder="GitHub Personal Access Token"
                 className="col-span-3"
                 disabled={isFileConfig}
               />
