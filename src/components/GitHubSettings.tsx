@@ -13,10 +13,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const GitHubSettings: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<GitHubConfig>({
-    owner: '',
-    repo: '',
+    owner: 'zivanest',
+    repo: 'bookworm-excel-hub',
     path: 'library-data.json',
-    token: '',
+    token: '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',
     branch: 'main'
   });
   const [isFileConfig, setIsFileConfig] = useState(false);
