@@ -27,10 +27,20 @@ export class GitHubDataService {
       const response = await fetch('/github-config.json');
       
       if (response.ok) {
+        // Check content type to ensure it's actually JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.log("Config file doesn't appear to be JSON. Content type:", contentType);
+          return;
+        }
+        
         const fileConfig = await response.json();
         if (fileConfig && fileConfig.owner && fileConfig.repo && fileConfig.token) {
           console.log("GitHub config loaded from file");
-          this.config = { ...fileConfig, configSource: 'file' };
+          this.config = { 
+            ...fileConfig, 
+            configSource: 'file' as 'file' | 'localStorage'
+          };
           toast.success("GitHub configuration loaded from file");
         }
       }
@@ -127,13 +137,26 @@ export class GitHubDataService {
       }
 
       const data = await response.json();
+      
+      // Check if content exists (it should for a valid file)
+      if (!data.content) {
+        console.error("No content found in GitHub response:", data);
+        toast.error("Invalid data format from GitHub");
+        return defaultData;
+      }
+      
       const content = atob(data.content);
       
-      // Parse JSON data
-      this.cachedData = JSON.parse(content) as LibraryData;
-      this.lastFetchTime = now;
-      
-      return this.cachedData;
+      try {
+        // Parse JSON data
+        this.cachedData = JSON.parse(content) as LibraryData;
+        this.lastFetchTime = now;
+        return this.cachedData;
+      } catch (error) {
+        console.error("Error parsing JSON from GitHub:", error);
+        toast.error("The file on GitHub is not in valid JSON format");
+        return defaultData;
+      }
     } catch (error) {
       console.error("Error fetching data from GitHub:", error);
       toast.error("Failed to load data from GitHub");
@@ -180,7 +203,7 @@ export class GitHubDataService {
         console.log("File doesn't exist yet, will create it");
       }
 
-      // Prepare the request body
+      // Prepare the request body - ensure we're sending JSON data
       const content = btoa(JSON.stringify(data, null, 2));
       const requestBody: any = {
         message: `Update library data - ${new Date().toISOString()}`,
@@ -232,7 +255,8 @@ export class GitHubDataService {
 export const githubService = new GitHubDataService({
   owner: "",
   repo: "",
-  path: "library-data.json",
+  path: "library-data.json", // Changed to .json extension
   token: "",
-  branch: "main"
+  branch: "main",
+  configSource: "localStorage" as "localStorage" | "file"
 });

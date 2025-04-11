@@ -8,6 +8,7 @@ import ReturnSection from '@/components/ReturnSection';
 import GitHubSettings from '@/components/GitHubSettings';
 import { initializeData } from '@/data/libraryData';
 import { githubService } from '@/services/githubService';
+import { toast } from 'sonner';
 
 const Index: React.FC = () => {
   const [activeTab, setActiveTab] = useState('students');
@@ -21,11 +22,20 @@ const Index: React.FC = () => {
       
       // Try to load the GitHub config first
       try {
-        await new Promise(resolve => setTimeout(resolve, 500)); // Give time for the GitHub service to load config from file
+        // Give time for the GitHub service to load config from file
+        await new Promise(resolve => setTimeout(resolve, 1000)); 
+        
+        // Initialize the library data
         await initializeData();
         setIsInitialized(true);
+        
+        // Check if GitHub is configured, display toast if not
+        if (!githubService.hasValidConfig()) {
+          toast.info("GitHub not configured. Please set up GitHub settings or add a github-config.json file.");
+        }
       } catch (error) {
         console.error("Error initializing data:", error);
+        toast.error("Error initializing library system");
       } finally {
         setIsLoading(false);
       }

@@ -13,11 +13,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 const GitHubSettings: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<GitHubConfig>({
-    owner: 'zivanest',
-    repo: 'bookworm-excel-hub',
-    path: 'src/data/libraryData.ts',
-    token: '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',
-    branch: 'main'
+    owner: '',
+    repo: '',
+    path: 'library-data.json',
+    token: '',
+    branch: 'main',
+    configSource: 'localStorage'
   });
   const [isFileConfig, setIsFileConfig] = useState(false);
 
@@ -35,14 +36,14 @@ const GitHubSettings: React.FC = () => {
     const savedConfig = localStorage.getItem('githubConfig');
     if (savedConfig) {
       try {
-        const parsedConfig = JSON.parse(savedConfig) as Omit<GitHubConfig, 'configSource'>;
+        const parsedConfig = JSON.parse(savedConfig);
         setConfig({
           ...parsedConfig,
-          configSource: 'localStorage'
+          configSource: 'localStorage' as 'localStorage' | 'file'
         });
         githubService.setConfig({
           ...parsedConfig,
-          configSource: 'localStorage'
+          configSource: 'localStorage' as 'localStorage' | 'file'
         });
       } catch (error) {
         console.error("Error parsing stored GitHub config:", error);
@@ -73,9 +74,17 @@ const GitHubSettings: React.FC = () => {
         return;
       }
 
-      // Save to localStorage
+      // Ensure path has .json extension
+      let updatedPath = config.path;
+      if (!updatedPath.endsWith('.json')) {
+        updatedPath = updatedPath.replace(/\.[^/.]+$/, '') + '.json';
+        toast.info(`File path updated to ensure JSON format: ${updatedPath}`);
+      }
+      
+      // Save to localStorage with proper type
       const configToSave: GitHubConfig = { 
-        ...config, 
+        ...config,
+        path: updatedPath,
         configSource: 'localStorage' 
       };
       localStorage.setItem('githubConfig', JSON.stringify(configToSave));
