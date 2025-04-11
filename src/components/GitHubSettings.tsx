@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { GitHubConfig } from '@/types';
 import { githubService } from '@/services/githubService';
 import { toast } from 'sonner';
-import { Settings, GithubIcon, FileJson } from 'lucide-react';
+import { Settings, GithubIcon, FileJson, InfoIcon } from 'lucide-react';
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const GitHubSettings: React.FC = () => {
@@ -69,7 +68,7 @@ const GitHubSettings: React.FC = () => {
       
       // Validate config
       if (!config.owner || !config.repo || !config.path) {
-        toast.error("All fields are required");
+        toast.error("Owner, repository, and file path are required");
         return;
       }
 
@@ -187,8 +186,17 @@ const GitHubSettings: React.FC = () => {
             </div>
           </div>
           
+          <Alert className="mt-4">
+            <InfoIcon className="h-4 w-4" />
+            <AlertDescription>
+              This configuration is for reading data from public repositories. For writing data, a GitHub token is required but has been removed for simplicity.
+            </AlertDescription>
+          </Alert>
+          
           <div className="pt-4 text-sm text-muted-foreground">
-            <p>Note: Your token is stored only in your browser's local storage.</p>
+            <p>
+              You can view your data but won't be able to save changes back to the repository without a token.
+            </p>
             {!isFileConfig && (
               <p className="mt-2">
                 Alternatively, you can create a <code>github-config.json</code> file in the public directory with your settings.
